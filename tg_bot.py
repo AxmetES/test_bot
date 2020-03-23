@@ -1,6 +1,5 @@
 import logging
 import os
-
 import numpy
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import random
@@ -18,31 +17,19 @@ db_URL = os.getenv('DB_URL')
 
 def start(bot, update):
     test = get_questions()
-    answers = []
-    all_answers = []
 
     question = random.choice(list(test.keys()))
-    correct = test.get(question)
-    while True:
-        answer = numpy.random.choice(list(test.values()), size=2, replace=False)
-        if correct in answer:
-            continue
-        else:
-            break
-    answers = list(answer)
-    answers.append(correct)
+    answer = test.get(question)
 
-    answer_1 = answers[0]
-    answer_2 = answers[1]
-    answer_3 = answers[2]
-
-    keyboard = [[InlineKeyboardButton(f"{answer_1}", callback_data='1'),
-                 InlineKeyboardButton(f"{answer_2}", callback_data='2')],
-                [InlineKeyboardButton(f"{answer_3}", callback_data='3')]]
+    keyboard = [[InlineKeyboardButton("{button_1}", callback_data='1'),
+                 InlineKeyboardButton("{button_2}", callback_data='2')],
+                [InlineKeyboardButton("{button_3}", callback_data='3')]]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     chat_id = update.message.chat_id
     r_conn.set(chat_id, question)
+    r_conn.set(chat_id, answer)
+    print(answer)
     update.message.reply_text(f'{question}:', reply_markup=reply_markup)
 
 
@@ -50,11 +37,20 @@ def button(bot, update):
     query = update.callback_query
     chat_id = str(query['message']['chat']['id'])
     db_question = r_conn.get(chat_id)
-    query.edit_message_text(text=f"answer".format(query.data))
+    query.edit_message_text(text=f"{db_question}".format(query.data))
 
 
 def echo(bot, update):
-    bot.send_message(chat_id=update.message.chat_id, text=update.message.text)
+    message = update.message.text
+    chat_id = update.message.chat_id
+    db_answer = r_conn.get(chat_id)
+    answer = str(db_answer.decode('utf-8'))
+    answer = answer.replace('Ответ:', '')
+    print(answer)
+    if message in answer:
+        bot.send_message(chat_id=update.message.chat_id, text="Right")
+    else:
+        bot.send_message(chat_id=update.message.chat_id, text='Wrong')
 
 
 def main():
@@ -73,5 +69,5 @@ def main():
 
 if __name__ == '__main__':
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
-                         password=db_password)
+                         password=db_password, charset='utf-8')
     main()
