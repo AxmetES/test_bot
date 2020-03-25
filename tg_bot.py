@@ -1,14 +1,17 @@
 import logging
 import os
 import numpy
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 import random
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler, \
+    RegexHandler
 from quiz_questions import get_questions
 import redis
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+START_QUIZ, ANSWER = range(2)
 
 db_password = os.getenv('DB_PASSWORD')
 db_port = os.getenv('DB_PORT')
@@ -16,41 +19,52 @@ db_URL = os.getenv('DB_URL')
 
 
 def start(bot, update):
-    test = get_questions()
+    reply_keyboard = [['start quiz', 'cancel']]
 
+    update.message.reply_text('Start quiz ?',
+                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+
+    return START_QUIZ
+
+
+def handle_new_question_request(bot, update):
+    test = get_questions()
     question = random.choice(list(test.keys()))
     answer = test.get(question)
-
-    keyboard = [[InlineKeyboardButton("{button_1}", callback_data='1'),
-                 InlineKeyboardButton("{button_2}", callback_data='2')],
-                [InlineKeyboardButton("{button_3}", callback_data='3')]]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    print(answer)
     chat_id = update.message.chat_id
     r_conn.set(chat_id, question)
     r_conn.set(chat_id, answer)
-    print(answer)
-    update.message.reply_text(f'{question}:', reply_markup=reply_markup)
+    bot.send_message(chat_id=update.message.chat_id, text=question)
+    return ANSWER
 
 
-def button(bot, update):
-    query = update.callback_query
-    chat_id = str(query['message']['chat']['id'])
-    db_question = r_conn.get(chat_id)
-    query.edit_message_text(text=f"{db_question}".format(query.data))
-
-
-def echo(bot, update):
-    message = update.message.text
+def handle_solution_attempt(bot, update):
+    reply_keyboard = [['next', 'cancel']]
+    text = update.message.text
     chat_id = update.message.chat_id
     db_answer = r_conn.get(chat_id)
     answer = str(db_answer.decode('utf-8'))
     answer = answer.replace('Ответ:', '')
     print(answer)
-    if message in answer:
-        bot.send_message(chat_id=update.message.chat_id, text="Right")
+    print(text)
+    if text in answer:
+        text = 'Right! next ?'
     else:
-        bot.send_message(chat_id=update.message.chat_id, text='Wrong')
+        text = 'Wrong! next ?'
+
+    update.message.reply_text(text,
+                              reply_keyboard=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+    return START_QUIZ
+
+
+def cancel(bot, update):
+    user = update.message.from_user
+    logger.info("User %s canceled the conversation.", user.first_name)
+    update.message.reply_text('Bye! I hope we can talk again some day.',
+                              reply_markup=ReplyKeyboardRemove())
+
+    return ConversationHandler.END
 
 
 def main():
@@ -58,9 +72,19 @@ def main():
     updater = Updater(token)
 
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler('start', start))
-    dp.add_handler(CallbackQueryHandler(button))
-    dp.add_handler(MessageHandler(Filters.text, echo))
+
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+
+        states={
+            START_QUIZ: [MessageHandler(Filters.text, handle_new_question_request)],
+
+            ANSWER: [MessageHandler(Filters.text, handle_solution_attempt),
+                     RegexHandler('next', handle_solution_attempt)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+    dp.add_handler(conv_handler)
     updater.start_polling()
     logger.info('bot is started')
 
@@ -70,4 +94,4 @@ def main():
 if __name__ == '__main__':
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
                          password=db_password, charset='utf-8')
-    main()
+main()
