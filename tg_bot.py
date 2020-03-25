@@ -53,8 +53,9 @@ def handle_solution_attempt(bot, update):
     else:
         text = 'Wrong! next ?'
 
-    update.message.reply_text(text,
-                              reply_keyboard=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+    update.message.reply_text(f'{text}',
+                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+
     return START_QUIZ
 
 
@@ -80,9 +81,10 @@ def main():
             START_QUIZ: [MessageHandler(Filters.text, handle_new_question_request)],
 
             ANSWER: [MessageHandler(Filters.text, handle_solution_attempt),
-                     RegexHandler('next', handle_solution_attempt)]
+                     RegexHandler('^next$', handle_solution_attempt),
+                     RegexHandler('^cancel$', cancel)]
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks=[CommandHandler('^cancel$', cancel)]
     )
     dp.add_handler(conv_handler)
     updater.start_polling()
