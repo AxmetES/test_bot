@@ -1,17 +1,15 @@
 import logging
 import os
-import numpy
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 import random
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler, \
-    RegexHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, RegexHandler
 from quiz_questions import get_questions
 import redis
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-START_QUIZ, ANSWER = range(2)
+START_QUIZ, ANSWERING = range(2)
 
 db_password = os.getenv('DB_PASSWORD')
 db_port = os.getenv('DB_PORT')
@@ -28,15 +26,16 @@ def start(bot, update):
 
 
 def handle_new_question_request(bot, update):
+    reply_keyboard = [['surrender', 'cancel']]
+
     test = get_questions()
     question = random.choice(list(test.keys()))
     answer = test.get(question)
-    print(answer)
     chat_id = update.message.chat_id
     r_conn.set(chat_id, question)
     r_conn.set(chat_id, answer)
-    bot.send_message(chat_id=update.message.chat_id, text=question)
-    return ANSWER
+    bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
+    return ANSWERING
 
 
 def handle_solution_attempt(bot, update):
@@ -46,15 +45,24 @@ def handle_solution_attempt(bot, update):
     db_answer = r_conn.get(chat_id)
     answer = str(db_answer.decode('utf-8'))
     answer = answer.replace('Ответ:', '')
-    print(answer)
-    print(text)
     if text in answer:
         text = 'Right! next ?'
     else:
         text = 'Wrong! next ?'
 
-    update.message.reply_text(f'{text}',
-                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+    update.message.reply_text(text,
+                              reply_markup=ReplyKeyboardMarkup(reply_keyboard))
+
+    return START_QUIZ
+
+
+def get_answer(bot, update):
+    reply_keyboard = [['next', 'cancel']]
+    chat_id = update.message.chat_id
+    db_answer = r_conn.get(chat_id)
+    answer = str(db_answer.decode('utf-8'))
+    answer = answer.replace('Ответ:', '')
+    update.message.reply_text(answer, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
 
     return START_QUIZ
 
@@ -78,13 +86,14 @@ def main():
         entry_points=[CommandHandler('start', start)],
 
         states={
-            START_QUIZ: [MessageHandler(Filters.text, handle_new_question_request)],
+            START_QUIZ: [RegexHandler('^start quiz', handle_new_question_request),
+                         RegexHandler('^next$', handle_new_question_request)],
 
-            ANSWER: [MessageHandler(Filters.text, handle_solution_attempt),
-                     RegexHandler('^next$', handle_solution_attempt),
-                     RegexHandler('^cancel$', cancel)]
+            ANSWERING: [RegexHandler('^cancel$', cancel),
+                        RegexHandler('^surrender$', get_answer),
+                        MessageHandler(Filters.text, handle_solution_attempt)]
         },
-        fallbacks=[CommandHandler('^cancel$', cancel)]
+        fallbacks=[RegexHandler('^cancel$', cancel)]
     )
     dp.add_handler(conv_handler)
     updater.start_polling()

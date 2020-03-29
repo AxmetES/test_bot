@@ -1,6 +1,4 @@
 import os
-import re
-import pprint
 
 
 def get_questions():
@@ -9,7 +7,6 @@ def get_questions():
     questions = []
     answers = []
 
-    # quiz = re.split('\n\n', quiz_questions)
     quiz = quiz_questions.split(2 * os.linesep)
     for quest in quiz:
         if 'Вопрос' in quest:
