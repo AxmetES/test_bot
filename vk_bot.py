@@ -65,7 +65,7 @@ def surrender(vk_api, user_id, solution_keyboard):
 def cancel(vk_api, user_id, start_keyboard):
     vk_api.messages.send(
         user_id=user_id,
-        message='Bay Bay',
+        message='Bye! I hope we can talk again some day.',
         random_id=get_random_id(),
         keyboard=start_keyboard.get_keyboard()
     )

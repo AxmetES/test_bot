@@ -5,6 +5,9 @@ import random
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, RegexHandler
 from quiz_questions import get_questions
 import redis
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -105,4 +108,4 @@ def main():
 if __name__ == '__main__':
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
                          password=db_password, charset='utf-8')
-main()
+    main()
