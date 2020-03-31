@@ -17,7 +17,7 @@ START_QUIZ, ANSWERING = range(2)
 
 db_password = os.getenv('DB_PASSWORD')
 db_port = os.getenv('DB_PORT')
-db_URL = redis.from_url(os.environ.get('DB_URL'))
+db_URL = os.getenv('DB_URL')
 
 
 def start(bot, update):
