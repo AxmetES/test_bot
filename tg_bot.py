@@ -18,6 +18,9 @@ START_QUIZ, ANSWERING = range(2)
 db_password = os.environ['DB_PASSWORD']
 db_port = os.environ['DB_PORT']
 db_URL = os.environ['DB_URL']
+logger.info(db_password)
+logger.info(db_port)
+logger.info(db_URL)
 
 
 def start(bot, update):
