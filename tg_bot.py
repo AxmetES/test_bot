@@ -15,9 +15,9 @@ test = get_questions()
 
 START_QUIZ, ANSWERING = range(2)
 
-db_password = os.getenv('DB_PASSWORD')
-db_port = os.getenv('DB_PORT')
-db_URL = os.getenv('DB_URL')
+db_password = os.environ['DB_PASSWORD']
+db_port = os.environ['DB_PORT']
+db_URL = os.environ['DB_URL']
 
 
 def start(bot, update):
