@@ -11,6 +11,7 @@ load_dotenv()
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+test = get_questions()
 
 START_QUIZ, ANSWERING = range(2)
 
@@ -31,11 +32,9 @@ def start(bot, update):
 def handle_new_question_request(bot, update):
     reply_keyboard = [['surrender', 'cancel']]
 
-    test = get_questions()
     question = random.choice(list(test.keys()))
     answer = test.get(question)
     chat_id = update.message.chat_id
-    r_conn.set(chat_id, question)
     r_conn.set(chat_id, answer)
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
@@ -49,9 +48,9 @@ def handle_solution_attempt(bot, update):
     answer = str(db_answer.decode('utf-8'))
     answer = answer.replace('Ответ:', '')
     if text in answer:
-        text = 'Right! next ?'
+        text = 'Right!... next ?'
     else:
-        text = 'Wrong! next ?'
+        text = 'Wrong!... next ?'
 
     update.message.reply_text(text,
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard))

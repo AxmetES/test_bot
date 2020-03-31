@@ -12,6 +12,7 @@ import random
 load_dotenv()
 
 logger = logging.getLogger('dialogflow_bot_logger')
+test = get_questions()
 
 
 def send_message(vk_api, text, user_id):
@@ -23,7 +24,6 @@ def send_message(vk_api, text, user_id):
 
 
 def handle_new_question_request(vk_api, user_id, question_keyboard):
-    test = get_questions()
     question = random.choice(list(test.keys()))
     answer = test.get(question)
     r_conn.set(user_id, answer)
