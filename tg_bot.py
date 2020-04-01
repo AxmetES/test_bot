@@ -19,10 +19,6 @@ db_password = os.environ['DB_PASSWORD']
 db_port = os.environ['DB_PORT']
 db_URL = os.environ['DB_URL']
 
-logger.info(db_password)
-logger.info(db_port)
-logger.info(db_URL)
-
 
 def start(bot, update):
     reply_keyboard = [['start quiz', 'cancel']]
@@ -39,7 +35,10 @@ def handle_new_question_request(bot, update):
     question = random.choice(list(test.keys()))
     answer = test.get(question)
     chat_id = update.message.chat_id
-    r_conn.set(chat_id, answer)
+    try:
+        r_conn.set(chat_id, answer)
+    except redis.exceptions.ConnectionError as msg:
+        logger.error(msg)
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
 
