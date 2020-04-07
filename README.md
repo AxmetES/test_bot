@@ -29,8 +29,9 @@ to start telegram bot.
 python vk_bot.py 
 ```
 
-![](vk_test_bot.gif)
 to start vkontakte bot.
+
+![](vk_test_bot.gif)
 
 ## License
 
