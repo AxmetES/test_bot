@@ -21,7 +21,8 @@ def send_message(vk_api, text, user_id):
 
 
 def handle_new_question_request(vk_api, user_id, question_keyboard, test):
-    question = random.choice(list(test.keys()))
+    quiz = get_questions()
+    question = random.choice(test.keys())
     answer = test.get(question)
     r_conn.set(f'vk-{user_id}', answer.replace('Ответ:\n', ''))
     vk_api.messages.send(
@@ -70,7 +71,7 @@ def cancel(vk_api, user_id, start_keyboard):
 
 if __name__ == "__main__":
     load_dotenv()
-    test = get_questions()
+
     db_URL = os.getenv('DB_URL')
     db_port = os.getenv('DB_PORT')
     db_password = os.getenv('DB_PASSWORD')
@@ -106,9 +107,9 @@ if __name__ == "__main__":
         if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
             user_id = event.user_id
             if event.text == 'Начать':
-                handle_new_question_request(vk_api, user_id, question_keyboard, test)
+                handle_new_question_request(vk_api, user_id, question_keyboard, quiz)
             elif event.text == 'next':
-                handle_new_question_request(vk_api, user_id, question_keyboard, test)
+                handle_new_question_request(vk_api, user_id, question_keyboard, quiz)
             elif event.text == 'surrender':
                 surrender(vk_api, user_id, solution_keyboard)
             elif event.text == 'cancel':

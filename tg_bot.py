@@ -27,11 +27,11 @@ def start(bot, update):
 
 
 def handle_new_question_request(bot, update):
-    test = get_questions()
+    quiz = get_questions()
     reply_keyboard = [['surrender', 'cancel']]
 
-    question = random.choice(list(test.keys()))
-    answer = test.get(question)
+    question = random.choice(quiz.keys())
+    answer = quiz.get(question)
     chat_id = update.message.chat_id
     r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
