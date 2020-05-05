@@ -7,11 +7,8 @@ from quiz_questions import get_questions
 import redis
 from dotenv import load_dotenv
 
-load_dotenv()
-
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
-test = get_questions()
 
 START_QUIZ, ANSWERING = range(2)
 
@@ -30,15 +27,13 @@ def start(bot, update):
 
 
 def handle_new_question_request(bot, update):
+    test = get_questions()
     reply_keyboard = [['surrender', 'cancel']]
 
     question = random.choice(list(test.keys()))
     answer = test.get(question)
     chat_id = update.message.chat_id
-    try:
-        r_conn.set(chat_id, answer)
-    except redis.exceptions.ConnectionError as msg:
-        logger.error(msg)
+    r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
 
@@ -47,13 +42,12 @@ def handle_solution_attempt(bot, update):
     reply_keyboard = [['next', 'cancel']]
     text = update.message.text
     chat_id = update.message.chat_id
-    db_answer = r_conn.get(chat_id)
-    answer = str(db_answer.decode('utf-8'))
-    answer = answer.replace('Ответ:', '')
-    if text in answer:
+    db_answer = r_conn.get(f'tg-{chat_id}')
+    answer = db_answer.decode('utf-8')
+    if text == answer:
         text = 'Right!... next ?'
     else:
-        text = 'Wrong!... next ?'
+        text = f'Wrong!...\n Right answer:  {answer}\n next ?'
 
     update.message.reply_text(text,
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard))
@@ -64,9 +58,8 @@ def handle_solution_attempt(bot, update):
 def get_answer(bot, update):
     reply_keyboard = [['next', 'cancel']]
     chat_id = update.message.chat_id
-    db_answer = r_conn.get(chat_id)
-    answer = str(db_answer.decode('utf-8'))
-    answer = answer.replace('Ответ:', '')
+    db_answer = r_conn.get(f'tg-{chat_id}')
+    answer = db_answer.decode('utf-8')
     update.message.reply_text(answer, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
 
     return START_QUIZ
@@ -82,7 +75,8 @@ def cancel(bot, update):
 
 
 def main():
-    token = os.getenv('BOT_TOKEN')
+    load_dotenv()
+    token = os.getenv('TG_BOT_TOKEN')
     updater = Updater(token)
 
     dp = updater.dispatcher
@@ -108,6 +102,9 @@ def main():
 
 
 if __name__ == '__main__':
-    r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
-                         password=db_password, charset='utf-8')
+    try:
+        r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
+                             password=db_password)
+    except redis.exceptions.ConnectionError as msg:
+        logger.error(msg)
     main()

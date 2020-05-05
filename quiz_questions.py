@@ -2,29 +2,30 @@ import os
 
 
 def get_files():
-    directory = 'quiz-questions/'
+    directory = 'quiz-questions'
     files = os.listdir(directory)
     files_txt = filter(lambda x: x.endswith('.txt'), files)
     return files_txt
 
 
 def get_questions():
+    directory = 'quiz-questions'
     test = {}
-    key = val = None
+    question = answer = None
     files_txt = get_files()
     for txt in files_txt:
-        with open(f'quiz-questions/{txt}', 'r', encoding='KOI8-R') as file:
-            quiz_questions = file.read()
+        with open(os.path.join(directory, txt), 'r', encoding='KOI8-R') as file:
+            questions = file.read()
 
-        quiz = quiz_questions.split('\n\n\n')
+        questions = questions.split('\n\n\n')
 
-        for quiz_quest in quiz:
-            for quest in quiz_quest.split('\n\n'):
-                if quest.startswith('Вопрос'):
-                    key = quest
-                elif quest.startswith('Ответ'):
-                    val = quest
-                elif key and val:
-                    test.update({key: val})
+        for quiz_question in questions:
+            for query in quiz_question.split('\n\n'):
+                if query.startswith('Вопрос'):
+                    question = query
+                elif query.startswith('Ответ'):
+                    answer = query
+                elif question and answer:
+                    test.update({question: answer})
 
     return test
