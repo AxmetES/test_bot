@@ -11,8 +11,8 @@ Test bot work by [Telegram messenger](https://web.telegram.org/#/login) and [VKo
 DB_PASSWORD='Redis database password'
 DB_URL='Redis database url'
 DB_PORT='Redis database port'
-BOT_TOKEN='Bot token from Telegram'
-VK_GROUP_KEY='api group key'
+TG_BOT_TOKEN='Bot token from Telegram'
+VK_BOT_KEY='api group key'
 ```
 
 ## Deploy on Heroku

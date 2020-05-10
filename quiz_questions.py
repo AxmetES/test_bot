@@ -15,9 +15,9 @@ def get_questions():
     files_txt = get_files()
     for txt in files_txt:
         with open(os.path.join(directory, txt), 'r', encoding='KOI8-R') as file:
-            questions = file.read()
+            loaded_text = file.read()
 
-        questions = questions.split('\n\n\n')
+        questions = loaded_text.split('\n\n\n')
 
         for quiz_question in questions:
             for query in quiz_question.split('\n\n'):

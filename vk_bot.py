@@ -20,11 +20,14 @@ def send_message(vk_api, text, user_id):
     )
 
 
-def handle_new_question_request(vk_api, user_id, question_keyboard, test):
+def handle_new_question_request(vk_api, user_id, question_keyboard):
     quiz = get_questions()
-    question = random.choice(test.keys())
-    answer = test.get(question)
-    r_conn.set(f'vk-{user_id}', answer.replace('Ответ:\n', ''))
+    question = random.choice(list(quiz.keys()))
+    answer = quiz.get(question)
+    try:
+        r_conn.set(f'vk-{user_id}', answer.replace('Ответ:\n', ''))
+    except Exception as err:
+        logger.error(f'{err}')
     vk_api.messages.send(
         user_id=user_id,
         message=question,
@@ -34,7 +37,10 @@ def handle_new_question_request(vk_api, user_id, question_keyboard, test):
 
 
 def handle_solution_attempt(vk_api, user_id, solution_keyboard, event):
-    db_answer = r_conn.get(f'vk-{user_id}')
+    try:
+        db_answer = r_conn.get(f'vk-{user_id}')
+    except Exception as err:
+        logger.error(f'{err}')
     answer = db_answer.decode('utf-8')
     user_text = event.text
     if user_text == answer:
@@ -50,7 +56,10 @@ def handle_solution_attempt(vk_api, user_id, solution_keyboard, event):
 
 
 def surrender(vk_api, user_id, solution_keyboard):
-    db_answer = r_conn.get(f'vk-{user_id}')
+    try:
+        db_answer = r_conn.get(f'vk-{user_id}')
+    except Exception as err:
+        logger.error(f'{err}')
     answer = db_answer.decode('utf-8')
     vk_api.messages.send(
         user_id=user_id,
@@ -77,11 +86,8 @@ if __name__ == "__main__":
     db_password = os.getenv('DB_PASSWORD')
     vk_token = os.getenv('VK_BOT_KEY')
 
-    try:
-        r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
-                             password=db_password, charset='utf-8')
-    except redis.exceptions.ConnectionError as msg:
-        logger.error(msg)
+    r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
+                         password=db_password, charset='utf-8')
 
     solution_keyboard = VkKeyboard(one_time=True)
     solution_keyboard.add_button('next', color=VkKeyboardColor.POSITIVE)
@@ -107,9 +113,9 @@ if __name__ == "__main__":
         if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
             user_id = event.user_id
             if event.text == 'Начать':
-                handle_new_question_request(vk_api, user_id, question_keyboard, quiz)
+                handle_new_question_request(vk_api, user_id, question_keyboard)
             elif event.text == 'next':
-                handle_new_question_request(vk_api, user_id, question_keyboard, quiz)
+                handle_new_question_request(vk_api, user_id, question_keyboard)
             elif event.text == 'surrender':
                 surrender(vk_api, user_id, solution_keyboard)
             elif event.text == 'cancel':
