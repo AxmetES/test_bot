@@ -12,10 +12,6 @@ logger = logging.getLogger(__name__)
 
 START_QUIZ, ANSWERING = range(2)
 
-db_password = os.environ['DB_PASSWORD']
-db_port = os.environ['DB_PORT']
-db_URL = os.environ['DB_URL']
-
 
 def start(bot, update):
     logger.info('bot is started')
@@ -33,11 +29,9 @@ def handle_new_question_request(r_conn, bot, update):
 
     question = random.choice(list(quiz.keys()))
     answer = quiz.get(question)
+    answer = answer.replace('Ответ:\n', '')
     chat_id = update.message.chat_id
-    try:
-        r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
-    except Exception as err:
-        logger.error(f'{err}')
+    set_to_db(r_conn, chat_id=chat_id, answer=answer)
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
 
@@ -46,10 +40,7 @@ def handle_solution_attempt(r_conn, bot, update):
     reply_keyboard = [['next', 'cancel']]
     text = update.message.text
     chat_id = update.message.chat_id
-    try:
-        db_answer = r_conn.get(f'tg-{chat_id}')
-    except Exception as err:
-        logger.error(f'{err}')
+    db_answer = get_from_db(r_conn, chat_id)
     answer = db_answer.decode('utf-8')
     if text == answer:
         text = 'Right!... next ?'
@@ -65,10 +56,7 @@ def handle_solution_attempt(r_conn, bot, update):
 def get_answer(r_conn, bot, update):
     reply_keyboard = [['next', 'cancel']]
     chat_id = update.message.chat_id
-    try:
-        db_answer = r_conn.get(f'tg-{chat_id}')
-    except Exception as err:
-        logger.error(f'{err}')
+    db_answer = get_from_db(r_conn, chat_id)
     answer = db_answer.decode('utf-8')
     update.message.reply_text(answer, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
 
@@ -84,11 +72,36 @@ def cancel(bot, update):
     return ConversationHandler.END
 
 
+def get_from_db(r_conn, chat_id):
+    db_answer = None
+    try:
+        db_answer = r_conn.get(f'tg-{chat_id}')
+    except redis.exceptions.ConnectionError as err:
+        logger.error(f'{err}')
+    except redis.exceptions.TimeoutError as err:
+        logger.error(f'{err}')
+    return db_answer
+
+
+def set_to_db(r_conn, chat_id, answer):
+    try:
+        r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
+    except redis.exceptions.ConnectionError as err:
+        logger.error(f'{err}')
+    except redis.exceptions.TimeoutError as err:
+        logger.error(f'{err}')
+
+
 def main():
+    load_dotenv()
+
+    db_password = os.environ['DB_PASSWORD']
+    db_port = os.environ['DB_PORT']
+    db_URL = os.environ['DB_URL']
+
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
                          password=db_password)
 
-    load_dotenv()
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     token = os.getenv('TG_BOT_TOKEN')

@@ -24,10 +24,7 @@ def handle_new_question_request(vk_api, user_id, question_keyboard):
     quiz = get_questions()
     question = random.choice(list(quiz.keys()))
     answer = quiz.get(question)
-    try:
-        r_conn.set(f'vk-{user_id}', answer.replace('Ответ:\n', ''))
-    except Exception as err:
-        logger.error(f'{err}')
+    r_conn.set(f'tg-{user_id}', answer.replace('Ответ:\n', ''))
     vk_api.messages.send(
         user_id=user_id,
         message=question,
@@ -37,10 +34,7 @@ def handle_new_question_request(vk_api, user_id, question_keyboard):
 
 
 def handle_solution_attempt(vk_api, user_id, solution_keyboard, event):
-    try:
-        db_answer = r_conn.get(f'vk-{user_id}')
-    except Exception as err:
-        logger.error(f'{err}')
+    db_answer = r_conn.get(f'tg-{user_id}')
     answer = db_answer.decode('utf-8')
     user_text = event.text
     if user_text == answer:
@@ -56,10 +50,7 @@ def handle_solution_attempt(vk_api, user_id, solution_keyboard, event):
 
 
 def surrender(vk_api, user_id, solution_keyboard):
-    try:
-        db_answer = r_conn.get(f'vk-{user_id}')
-    except Exception as err:
-        logger.error(f'{err}')
+    db_answer = r_conn.get(f'tg-{user_id}')
     answer = db_answer.decode('utf-8')
     vk_api.messages.send(
         user_id=user_id,
@@ -89,6 +80,10 @@ if __name__ == "__main__":
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
                          password=db_password, charset='utf-8')
 
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger.setLevel(logging.DEBUG)
+
     solution_keyboard = VkKeyboard(one_time=True)
     solution_keyboard.add_button('next', color=VkKeyboardColor.POSITIVE)
     solution_keyboard.add_button('cancel', color=VkKeyboardColor.POSITIVE)
@@ -103,22 +98,23 @@ if __name__ == "__main__":
     vk_session = vk_api.VkApi(token=vk_token)
     vk_api = vk_session.get_api()
 
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger.setLevel(logging.DEBUG)
-
     longpoll = VkLongPoll(vk_session)
+    try:
+        for event in longpoll.listen():
+            if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
+                user_id = event.user_id
+                if event.text == 'Начать':
+                    handle_new_question_request(vk_api, user_id, question_keyboard)
+                elif event.text == 'next':
+                    handle_new_question_request(vk_api, user_id, question_keyboard)
+                elif event.text == 'surrender':
+                    surrender(vk_api, user_id, solution_keyboard)
+                elif event.text == 'cancel':
+                    cancel(vk_api, user_id, start_keyboard)
+                elif event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
+                    handle_solution_attempt(vk_api, user_id, solution_keyboard, event)
 
-    for event in longpoll.listen():
-        if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
-            user_id = event.user_id
-            if event.text == 'Начать':
-                handle_new_question_request(vk_api, user_id, question_keyboard)
-            elif event.text == 'next':
-                handle_new_question_request(vk_api, user_id, question_keyboard)
-            elif event.text == 'surrender':
-                surrender(vk_api, user_id, solution_keyboard)
-            elif event.text == 'cancel':
-                cancel(vk_api, user_id, start_keyboard)
-            elif event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
-                handle_solution_attempt(vk_api, user_id, solution_keyboard, event)
+    except redis.exceptions.ConnectionError as err:
+        logger.error(f'{err}')
+    except redis.exceptions.TimeoutError as err:
+        logger.error(f'{err}')
