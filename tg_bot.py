@@ -31,7 +31,7 @@ def handle_new_question_request(r_conn, bot, update):
     answer = quiz.get(question)
     answer = answer.replace('Ответ:\n', '')
     chat_id = update.message.chat_id
-    set_to_db(r_conn, chat_id=chat_id, answer=answer)
+    r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
 
@@ -40,7 +40,7 @@ def handle_solution_attempt(r_conn, bot, update):
     reply_keyboard = [['next', 'cancel']]
     text = update.message.text
     chat_id = update.message.chat_id
-    db_answer = get_from_db(r_conn, chat_id)
+    db_answer = r_conn.get(f'tg-{chat_id}')
     answer = db_answer.decode('utf-8')
     if text == answer:
         text = 'Right!... next ?'
@@ -49,14 +49,13 @@ def handle_solution_attempt(r_conn, bot, update):
 
     update.message.reply_text(text,
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard))
-
     return START_QUIZ
 
 
 def get_answer(r_conn, bot, update):
     reply_keyboard = [['next', 'cancel']]
     chat_id = update.message.chat_id
-    db_answer = get_from_db(r_conn, chat_id)
+    db_answer = r_conn.get(f'tg-{chat_id}')
     answer = db_answer.decode('utf-8')
     update.message.reply_text(answer, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
 
@@ -72,39 +71,24 @@ def cancel(bot, update):
     return ConversationHandler.END
 
 
-def get_from_db(r_conn, chat_id):
-    db_answer = None
-    try:
-        db_answer = r_conn.get(f'tg-{chat_id}')
-    except redis.exceptions.ConnectionError as err:
-        logger.error(f'{err}')
-    except redis.exceptions.TimeoutError as err:
-        logger.error(f'{err}')
-    return db_answer
-
-
-def set_to_db(r_conn, chat_id, answer):
-    try:
-        r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
-    except redis.exceptions.ConnectionError as err:
-        logger.error(f'{err}')
-    except redis.exceptions.TimeoutError as err:
-        logger.error(f'{err}')
+def error(bot, update, error):
+    """Log Errors caused by Updates."""
+    logger.error('Update "%s" caused error "%s"', update, error)
 
 
 def main():
     load_dotenv()
 
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
     db_password = os.environ['DB_PASSWORD']
     db_port = os.environ['DB_PORT']
     db_URL = os.environ['DB_URL']
+    token = os.getenv('TG_BOT_TOKEN')
 
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
                          password=db_password)
 
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
-    token = os.getenv('TG_BOT_TOKEN')
     updater = Updater(token)
     dp = updater.dispatcher
 
@@ -112,19 +96,25 @@ def main():
     p_get_answer = partial(get_answer, r_conn)
     p_handle_solution_attempt = partial(handle_solution_attempt, r_conn)
 
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            START_QUIZ: [
-                RegexHandler('^start quiz', p_handle_new_question_request),
-                RegexHandler('^next$', p_handle_new_question_request)],
+    try:
+        conv_handler = ConversationHandler(
+            entry_points=[CommandHandler('start', start)],
+            states={
+                START_QUIZ: [
+                    RegexHandler('^start quiz', p_handle_new_question_request),
+                    RegexHandler('^next$', p_handle_new_question_request)],
 
-            ANSWERING: [RegexHandler('^cancel$', cancel),
-                        RegexHandler('^surrender$', p_get_answer),
-                        MessageHandler(Filters.text, p_handle_solution_attempt)]
-        },
-        fallbacks=[RegexHandler('^cancel$', cancel)]
-    )
+                ANSWERING: [
+                    RegexHandler('^cancel$', cancel),
+                    RegexHandler('^surrender$', p_get_answer),
+                    MessageHandler(Filters.text, p_handle_solution_attempt)]
+            },
+            fallbacks=[RegexHandler('^cancel$', cancel)]
+        )
+    except Exception as err:
+        logger.error(f'{err}')
+
+    dp.add_error_handler(error)
     dp.add_handler(conv_handler)
     updater.start_polling()
 

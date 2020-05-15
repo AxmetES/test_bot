@@ -114,7 +114,5 @@ if __name__ == "__main__":
                 elif event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
                     handle_solution_attempt(vk_api, user_id, solution_keyboard, event)
 
-    except redis.exceptions.ConnectionError as err:
-        logger.error(f'{err}')
-    except redis.exceptions.TimeoutError as err:
+    except redis.exceptions.AuthenticationError as err:
         logger.error(f'{err}')
