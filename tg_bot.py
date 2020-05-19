@@ -53,7 +53,6 @@ def handle_solution_attempt(r_conn, bot, update):
 
 
 def get_answer(r_conn, bot, update):
-    print(0 / 0)
     reply_keyboard = [['next', 'cancel']]
     chat_id = update.message.chat_id
     db_answer = r_conn.get(f'tg-{chat_id}')
