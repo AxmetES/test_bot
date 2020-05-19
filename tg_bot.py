@@ -23,7 +23,7 @@ def start(bot, update):
     return START_QUIZ
 
 
-def handle_new_question_request(error, r_conn, bot, update):
+def handle_new_question_request(get_error, r_conn, bot, update):
     quiz = get_questions()
     reply_keyboard = [['surrender', 'cancel']]
 
@@ -31,16 +31,16 @@ def handle_new_question_request(error, r_conn, bot, update):
     answer = quiz.get(question)
     answer = answer.replace('Ответ:\n', '')
     chat_id = update.message.chat_id
-    error(update, answer, chat_id, r_conn)
+    get_error(update, answer, chat_id, r_conn)
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
 
 
-def handle_solution_attempt(error, r_conn, bot, update):
+def handle_solution_attempt(get_error, r_conn, bot, update):
     reply_keyboard = [['next', 'cancel']]
     text = update.message.text
     chat_id = update.message.chat_id
-    db_answer = error(update, chat_id, r_conn)
+    db_answer = get_error(update, chat_id, r_conn)
     answer = db_answer.decode('utf-8')
     if text == answer:
         text = 'Right!... next ?'
@@ -52,10 +52,10 @@ def handle_solution_attempt(error, r_conn, bot, update):
     return START_QUIZ
 
 
-def get_answer(error, r_conn, bot, update):
+def get_answer(get_error, r_conn, bot, update):
     reply_keyboard = [['next', 'cancel']]
     chat_id = update.message.chat_id
-    db_answer = error(update, chat_id, r_conn)
+    db_answer = get_error(update, chat_id, r_conn)
     answer = db_answer.decode('utf-8')
     update.message.reply_text(answer, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
 
@@ -79,6 +79,7 @@ def set_db_error(update, answer, chat_id, r_conn):
 
 
 def get_db_error(update, chat_id, r_conn):
+    db_answer = None
     try:
         db_answer = r_conn.get(f'tg-{chat_id}')
     except redis.exceptions.ConnectionError as err:
