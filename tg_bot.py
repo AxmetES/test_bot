@@ -23,7 +23,7 @@ def start(bot, update):
     return START_QUIZ
 
 
-def handle_new_question_request(get_error, r_conn, bot, update):
+def handle_new_question_request(r_conn, bot, update):
     quiz = get_questions()
     reply_keyboard = [['surrender', 'cancel']]
 
@@ -31,16 +31,16 @@ def handle_new_question_request(get_error, r_conn, bot, update):
     answer = quiz.get(question)
     answer = answer.replace('Ответ:\n', '')
     chat_id = update.message.chat_id
-    get_error(update, answer, chat_id, r_conn)
+    r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
 
 
-def handle_solution_attempt(get_error, r_conn, bot, update):
+def handle_solution_attempt(r_conn, bot, update):
     reply_keyboard = [['next', 'cancel']]
     text = update.message.text
     chat_id = update.message.chat_id
-    db_answer = get_error(update, chat_id, r_conn)
+    db_answer = r_conn.get(f'tg-{chat_id}')
     answer = db_answer.decode('utf-8')
     if text == answer:
         text = 'Right!... next ?'
@@ -52,10 +52,11 @@ def handle_solution_attempt(get_error, r_conn, bot, update):
     return START_QUIZ
 
 
-def get_answer(get_error, r_conn, bot, update):
+def get_answer(r_conn, bot, update):
+    print(0 / 0)
     reply_keyboard = [['next', 'cancel']]
     chat_id = update.message.chat_id
-    db_answer = get_error(update, chat_id, r_conn)
+    db_answer = r_conn.get(f'tg-{chat_id}')
     answer = db_answer.decode('utf-8')
     update.message.reply_text(answer, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
 
@@ -71,20 +72,8 @@ def cancel(bot, update):
     return ConversationHandler.END
 
 
-def set_db_error(update, answer, chat_id, r_conn):
-    try:
-        r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
-    except redis.ConnectionError as err:
-        logger.error(f'Update "%s" caused error {err}', update)
-
-
-def get_db_error(update, chat_id, r_conn):
-    db_answer = None
-    try:
-        db_answer = r_conn.get(f'tg-{chat_id}')
-    except redis.exceptions.ConnectionError as err:
-        logger.error(f'Update "%s" caused error {err}', update)
-    return db_answer
+def get_error(update, context):
+    logger.warning(f'Update {update} caused error {context.error}')
 
 
 def main():
@@ -103,9 +92,9 @@ def main():
     updater = Updater(token)
     dp = updater.dispatcher
 
-    p_handle_new_question_request = partial(handle_new_question_request, set_db_error, r_conn)
-    p_get_answer = partial(get_answer, get_db_error, r_conn)
-    p_handle_solution_attempt = partial(handle_solution_attempt, get_db_error, r_conn)
+    p_handle_new_question_request = partial(handle_new_question_request, r_conn)
+    p_get_answer = partial(get_answer, r_conn)
+    p_handle_solution_attempt = partial(handle_solution_attempt, r_conn)
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
@@ -122,7 +111,7 @@ def main():
         fallbacks=[RegexHandler('^cancel$', cancel)]
     )
 
-    dp.add_error_handler(set_db_error)
+    dp.add_error_handler(get_error)
     dp.add_handler(conv_handler)
     updater.start_polling()
 
