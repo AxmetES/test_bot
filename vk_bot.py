@@ -24,7 +24,7 @@ def handle_new_question_request(vk_api, user_id, question_keyboard):
     quiz = get_questions()
     question = random.choice(list(quiz.keys()))
     answer = quiz.get(question)
-    r_conn.set(f'tg-{user_id}', answer.replace('Ответ:\n', ''))
+    r_conn.set(f'tg-{user_id}', answer)
     vk_api.messages.send(
         user_id=user_id,
         message=question,

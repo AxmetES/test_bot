@@ -29,9 +29,8 @@ def handle_new_question_request(r_conn, bot, update):
 
     question = random.choice(list(quiz.keys()))
     answer = quiz.get(question)
-    answer = answer.replace('Ответ:\n', '')
     chat_id = update.message.chat_id
-    r_conn.set(f'tg-{chat_id}', answer.replace('Ответ:\n', ''))
+    r_conn.set(f'tg-{chat_id}', answer)
     bot.send_message(chat_id=update.message.chat_id, text=question, reply_markup=ReplyKeyboardMarkup(reply_keyboard))
     return ANSWERING
 
@@ -71,8 +70,8 @@ def cancel(bot, update):
     return ConversationHandler.END
 
 
-def get_error(update, context):
-    logger.warning(f'Update {update} caused error {context.error}')
+def handle_error(update, context):
+    logger.error(f'Update {update} caused error {context.error}')
 
 
 def main():
@@ -110,7 +109,7 @@ def main():
         fallbacks=[RegexHandler('^cancel$', cancel)]
     )
 
-    dp.add_error_handler(get_error)
+    dp.add_error_handler(handle_error)
     dp.add_handler(conv_handler)
     updater.start_polling()
 

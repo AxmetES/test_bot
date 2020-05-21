@@ -22,10 +22,12 @@ def get_questions():
         for quiz_question in questions:
             for query in quiz_question.split('\n\n'):
                 if query.startswith('Вопрос'):
-                    question = query
+                    question = query.split('\n')
+                    del question[0]
+                    question = ''.join(question)
                 elif query.startswith('Ответ'):
-                    answer = query
-                elif question and answer:
+                    answer = query.replace('Ответ:\n', '').replace('\n', '')
                     test.update({question: answer})
 
     return test
+
