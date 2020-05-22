@@ -7,7 +7,6 @@ import argparse
 load_dotenv()
 
 
-
 def get_directory(default_dir):
     parser = argparse.ArgumentParser(description='Add directory, default directory from ".env".')
     parser.add_argument('-l', '--directory', type=str, default=default_dir)
@@ -41,13 +40,12 @@ def get_questions(files):
                     question = ''.join(question)
                 elif query.startswith('Ответ'):
                     answer = query.replace('Ответ:\n', ' ').replace('\n', ' ')
-                    test.update({question: answer})
+                    test[question] = answer
 
     return test
 
 
 if __name__ == '__main__':
-
     db_password = os.environ['DB_PASSWORD']
     db_port = os.environ['DB_PORT']
     db_URL = os.environ['DB_URL']
