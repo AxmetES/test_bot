@@ -13,6 +13,7 @@ DB_URL='Redis database url'
 DB_PORT='Redis database port'
 TG_BOT_TOKEN='Bot token from Telegram'
 VK_BOT_KEY='api group key'
+DIR='Question files local repository'
 ```
 
 ## Deploy on Heroku
@@ -29,7 +30,7 @@ bot-vk: python3 vk_bot.py
 
 Running from command line:
 ```shell script
-python tg_bot.py 
+python tg_bot.py
 ```
 to start telegram bot.
 
@@ -42,6 +43,15 @@ python vk_bot.py
 to start vkontakte bot.
 
 ![](vk_test_bot.gif)
+
+### Repository change
+
+If question files repository changed, use :
+```shell script
+python quiz_questions.py -l 'you repository'
+```
+Script save your repository, and use it in next time.
+
 
 ## License
 

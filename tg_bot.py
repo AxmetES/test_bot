@@ -3,7 +3,7 @@ import os
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 import random
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, RegexHandler
-from quiz_questions import get_questions
+import quiz_questions
 import redis
 from dotenv import load_dotenv
 from functools import partial
@@ -24,10 +24,11 @@ def start(bot, update):
 
 
 def handle_new_question_request(r_conn, bot, update):
-    quiz = get_questions()
+    files = quiz_questions.get_files(r_conn)
+    quiz = quiz_questions.get_questions(files)
     reply_keyboard = [['surrender', 'cancel']]
-
-    question = random.choice(list(quiz.keys()))
+    *keys, = quiz.keys()
+    question = random.choice(keys)
     answer = quiz.get(question)
     chat_id = update.message.chat_id
     r_conn.set(f'tg-{chat_id}', answer)

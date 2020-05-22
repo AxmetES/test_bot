@@ -6,7 +6,7 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.utils import get_random_id
 from dotenv import load_dotenv
 import os
-from quiz_questions import get_questions
+import quiz_questions
 import random
 
 logger = logging.getLogger('dialogflow_bot_logger')
@@ -21,8 +21,10 @@ def send_message(vk_api, text, user_id):
 
 
 def handle_new_question_request(vk_api, user_id, question_keyboard):
-    quiz = get_questions()
-    question = random.choice(list(quiz.keys()))
+    files = quiz_questions.get_files(r_conn)
+    quiz = quiz_questions.get_questions(files)
+    *keys, = quiz.keys()
+    question = random.choice(keys)
     answer = quiz.get(question)
     r_conn.set(f'tg-{user_id}', answer)
     vk_api.messages.send(
