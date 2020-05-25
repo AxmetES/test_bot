@@ -13,10 +13,7 @@ def get_directory(default_dir):
 
 
 def get_files(directory):
-    files = []
-    os.chdir(directory)
-    for file in glob.glob('*.txt'):
-        files.append(file)
+    files = [file for file in glob.glob(os.path.join(directory, '*.txt'))]
     return files
 
 
@@ -25,7 +22,7 @@ def get_questions(files):
     question = answer = None
     files_txt = files
     for txt in files_txt:
-        with open(os.path.join(os.getcwd(), txt), 'r', encoding='KOI8-R') as file:
+        with open(txt, 'r', encoding='KOI8-R') as file:
             loaded_text = file.read()
 
         questions = loaded_text.split('\n\n\n')
@@ -36,7 +33,7 @@ def get_questions(files):
                     del question[0]
                     question = ''.join(question)
                 elif query.startswith('Ответ'):
-                    answer = query.replace('Ответ:\n', ' ').replace('\\n', ' ')
+                    answer = query.replace('Ответ:\n', ' ').replace('\n', ' ').replace('\n', '')
                     test[question] = answer
 
     return test
@@ -44,3 +41,6 @@ def get_questions(files):
 
 if __name__ == '__main__':
     load_dotenv()
+    dic = os.getenv('DIR')
+    files = get_files(dic)
+    print(get_questions(files))
