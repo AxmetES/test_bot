@@ -4,8 +4,6 @@ import redis
 from dotenv import load_dotenv
 import argparse
 
-load_dotenv()
-
 
 def get_directory(default_dir):
     parser = argparse.ArgumentParser(description='Add directory, default directory from ".env".')
@@ -14,9 +12,8 @@ def get_directory(default_dir):
     return args
 
 
-def get_files(r_conn):
+def get_files(directory):
     files = []
-    directory = r_conn.get('directory')
     os.chdir(directory)
     for file in glob.glob('*.txt'):
         files.append(file)
@@ -39,20 +36,11 @@ def get_questions(files):
                     del question[0]
                     question = ''.join(question)
                 elif query.startswith('Ответ'):
-                    answer = query.replace('Ответ:\n', ' ').replace('\n', ' ')
+                    answer = query.replace('Ответ:\n', ' ').replace('\\n', ' ')
                     test[question] = answer
 
     return test
 
 
 if __name__ == '__main__':
-    db_password = os.environ['DB_PASSWORD']
-    db_port = os.environ['DB_PORT']
-    db_URL = os.environ['DB_URL']
-    default_dir = os.getenv('DIR')
-
-    r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
-                         password=db_password)
-
-    args = get_directory(default_dir)
-    r_conn.set('directory', args.directory)
+    load_dotenv()

@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -23,8 +24,8 @@ def start(bot, update):
     return START_QUIZ
 
 
-def handle_new_question_request(r_conn, bot, update):
-    files = quiz_questions.get_files(r_conn)
+def handle_new_question_request(args, r_conn, bot, update):
+    files = quiz_questions.get_files(args.directory)
     quiz = quiz_questions.get_questions(files)
     reply_keyboard = [['surrender', 'cancel']]
     *keys, = quiz.keys()
@@ -84,6 +85,9 @@ def main():
     db_port = os.environ['DB_PORT']
     db_URL = os.environ['DB_URL']
     token = os.getenv('TG_BOT_TOKEN')
+    default_dir = os.getenv('DIR')
+
+    args = quiz_questions.get_directory(default_dir)
 
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
                          password=db_password)
@@ -91,7 +95,7 @@ def main():
     updater = Updater(token)
     dp = updater.dispatcher
 
-    p_handle_new_question_request = partial(handle_new_question_request, r_conn)
+    p_handle_new_question_request = partial(handle_new_question_request, args, r_conn)
     p_get_answer = partial(get_answer, r_conn)
     p_handle_solution_attempt = partial(handle_solution_attempt, r_conn)
 

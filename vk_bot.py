@@ -20,8 +20,8 @@ def send_message(vk_api, text, user_id):
     )
 
 
-def handle_new_question_request(vk_api, user_id, question_keyboard):
-    files = quiz_questions.get_files(r_conn)
+def handle_new_question_request(vk_api, user_id, question_keyboard, args):
+    files = quiz_questions.get_files(args.directory)
     quiz = quiz_questions.get_questions(files)
     *keys, = quiz.keys()
     question = random.choice(keys)
@@ -74,6 +74,7 @@ def cancel(vk_api, user_id, start_keyboard):
 if __name__ == "__main__":
     load_dotenv()
 
+    default_dir = os.getenv('DIR')
     db_URL = os.getenv('DB_URL')
     db_port = os.getenv('DB_PORT')
     db_password = os.getenv('DB_PASSWORD')
@@ -81,6 +82,8 @@ if __name__ == "__main__":
 
     r_conn = redis.Redis(host=db_URL, db=0, port=db_port,
                          password=db_password, charset='utf-8')
+
+    args = quiz_questions.get_directory(default_dir)
 
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -106,9 +109,9 @@ if __name__ == "__main__":
             if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
                 user_id = event.user_id
                 if event.text == 'Начать':
-                    handle_new_question_request(vk_api, user_id, question_keyboard)
+                    handle_new_question_request(vk_api, user_id, question_keyboard, args)
                 elif event.text == 'next':
-                    handle_new_question_request(vk_api, user_id, question_keyboard)
+                    handle_new_question_request(vk_api, user_id, question_keyboard, args)
                 elif event.text == 'surrender':
                     surrender(vk_api, user_id, solution_keyboard)
                 elif event.text == 'cancel':
